@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家庭の常備薬・処方薬の一元管理！期限切れ＆飲み合わせチェッカー</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --secondary: #14b8a6;
+            --danger: #f43f5e;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #334155;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        header p {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* タブナビゲーション */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* カードとフォーム */
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        input, select, textarea {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            height: 80px;
+        }
+
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+        }
+        .btn-danger:hover {
+            background-color: #e11d48;
+        }
+
+        /* 薬リスト表示 */
+        .med-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .med-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .med-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+        }
+
+        .med-item.status-safe::before { background-color: var(--success); }
+        .med-item.status-warning::before { background-color: var(--warning); }
+        .med-item.status-expired::before { background-color: var(--danger); }
+
+        .med-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .med-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .med-category {
+            font-size: 0.75rem;
+            background: var(--bg);
+            padding: 2px 8px;
+            border-radius: 20px;
+            color: var(--text-light);
+            border: 1px solid var(--border);
+        }
+
+        .med-body {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .med-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            width: fit-content;
+        }
+        .badge-safe { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-expired { background: #fee2e2; color: #991b1b; }
+
+        .med-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .icon-btn:hover { background: var(--bg); color: var(--text); }
+        .icon-btn.delete:hover { color: var(--danger); }
+
+        /* 飲み合わせチェッカー専用スタイル */
+        .checker-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .alert-box {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid;
+        }
+        .alert-danger {
+            background: #fee2e2;
+            border-color: var(--danger);
+            color: #991b1b;
+        }
+        .alert-warning {
+            background: #fef3c7;
+            border-color: var(--warning);
+            color: #92400e;
+        }
+        .alert-success {
+            background: #d1fae5;
+            border-color: var(--success);
+            color: #065f46;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-light);
+        }
+
+        /* 統計バナー */
+        .stats-banner {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 16px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        /* レスポンシブ調整 */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+            常備薬・処方薬の一元管理
+        </h1>
+        <p>期限切れの防止と安心な飲み合わせチェックをこの一台で</p>
+    </header>
+
+    <!-- ダッシュボード統計 -->
+    <div class="stats-banner" id="statsBanner">
+        <div class="stat-card">
+            <div class="stat-num" id="statTotal">0</div>
+            <div class="stat-label">登録薬数</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" id="statWarning" style="color: var(--warning);">0</div>
+            <div class="stat-label">もうすぐ期限</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-num" id="statExpired" style="color: var(--danger);">0</div>
+            <div class="stat-label">期限切れ</div>
+        </div>
+    </div>
+
+    <!-- タブ切り替え -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('list')">お薬リスト・登録</button>
+        <button class="tab-btn" onclick="switchTab('checker')">飲み合わせチェッカー</button>
+    </div>
+
+    <!-- タブ1: リスト＆登録 -->
+    <div id="tab-list" class="tab-content active">
+        <div class="card">
+            <h2 id="formTitle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                新しい薬を追加
+            </h2>
+            <form id="medForm" onsubmit="saveMedicine(event)">
+                <input type="hidden" id="medId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="medName">薬の名前（必須）</label>
+                        <input type="text" id="medName" required placeholder="例: ロキソニンS">
+                    </div>
+                    <div class="form-group">
+                        <label for="medCategory">区分</label>
+                        <select id="medCategory">
+                            <option value="処方薬">処方薬（病院）</option>
+                            <option value="市販薬">市販薬（ドラッグストア）</option>
+                            <option value="頓服薬">頓服薬</option>
+                            <option value="塗り薬・目薬">塗り薬・目薬など</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="medExpiry">使用期限（必須）</label>
+                        <input type="date" id="medExpiry" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="medMemo">メモ・服用用途など</label>
+                    <textarea id="medMemo" placeholder="例: 頭痛時 1回1錠、食後など"></textarea>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn" id="submitBtn">登録する</button>
+                    <button type="button" class="btn btn-danger" id="cancelEditBtn" style="display: none;" onclick="resetForm()">キャンセル</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>登録済みのお薬一覧</h2>
+            <div id="medListContainer" class="med-list">
+                <!-- 動的生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- タブ2: 飲み合わせチェッカー -->
+    <div id="tab-checker" class="tab-content">
+        <div class="card">
+            <h2>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                同時服用チェック（複数選択）
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px;">
+                同時に服用しようとしている薬を2つ以上選択してください。一般的な成分グループや成分同士の注意点をチェックします。
+            </p>
+            
+            <div class="checker-selector">
+                <div id="checkerCheckboxes" class="checkbox-group">
+                    <!-- 動的生成 -->
+                </div>
+                <button type="button" class="btn" onclick="runCheck()">飲み合わせをチェックする</button>
+            </div>
+
+            <div id="checkResultContainer">
+                <div class="empty-state">チェックしたい薬を選択してボタンを押してください。</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 初期サンプルデータ（localStorageがない場合）
+    const initialMedicines = [
+        { id: '1', name: 'ロキソニンS', category: '市販薬', expiry: '2025-12-31', memo: '頭痛・発熱時' },
+        { id: '2', name: 'PL顆粒（総合感冒薬）', category: '処方薬', expiry: '2024-05-15', memo: '風邪のひきはじめ' },
+        { id: '3', name: 'ムコダイン（去痰薬）', category: '処方薬', expiry: '2026-01-10', memo: '咳・痰' }
+    ];
+
+    let medicines = JSON.parse(localStorage.getItem('medicines')) || initialMedicines;
+
+    // タブ切り替え
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+        if (tabId === 'list') {
+            document.querySelector('.tabs button:nth-child(1)').classList.add('active');
+            document.getElementById('tab-list').classList.add('active');
+        } else if (tabId === 'checker') {
+            document.querySelector('.tabs button:nth-child(2)').classList.add('active');
+            document.getElementById('tab-checker').classList.add('active');
+            renderCheckerCheckboxes();
+        }
+    }
+
+    // 日付判定 (safe, warning: 30日以内, expired)
+    function getExpiryStatus(expiryDateStr) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const expiry = new Date(expiryDateStr);
+        expiry.setHours(0,0,0,0);
+
+        const diffTime = expiry - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return { status: 'expired', label: '期限切れ', badgeClass: 'badge-expired' };
+        } else if (diffDays <= 30) {
+            return { status: 'warning', label: `残り ${diffDays}日`, badgeClass: 'badge-warning' };
+        } else {
+            return { status: 'safe', label: `期限内 (残り${diffDays}日)`, badgeClass: 'badge-safe' };
+        }
+    }
+
+    // 統計更新
+    function updateStats() {
+        const total = medicines.length;
+        let warning = 0;
+        let expired = 0;
+
+        medicines.forEach(med => {
+            const res = getExpiryStatus(med.expiry);
+            if (res.status === 'warning') warning++;
+            if (res.status === 'expired') expired++;
+        });
+
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statWarning').innerText = warning;
+        document.getElementById('statExpired').innerText = expired;
+    }
+
+    // 薬リスト描画
+    function renderMedicines() {
+        const container = document.getElementById('medListContainer');
+        container.innerHTML = '';
+
+        if (medicines.length === 0) {
+            container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">登録されているお薬はありません。</div>';
+            updateStats();
+            return;
+        }
+
+        medicines.forEach(med => {
+            const { status, label, badgeClass } = getExpiryStatus(med.expiry);
+            
+            const item = document.createElement('div');
+            item.className = `med-item status-${status}`;
+            item.innerHTML = `
+                <div>
+                    <div class="med-header">
+                        <span class="med-name">${escapeHTML(med.name)}</span>
+                        <span class="med-category">${escapeHTML(med.category)}</span>
+                    </div>
+                    <div class="med-body">
+                        <div>期限: ${med.expiry} <span class="med-badge ${badgeClass}">${label}</span></div>
+                        ${med.memo ? `<div>メモ: ${escapeHTML(med.memo)}</div>` : ''}
+                    </div>
+                </div>
+                <div class="med-footer">
+                    <button class="icon-btn" onclick="editMedicine('${med.id}')">編集</button>
+                    <button class="icon-btn delete" onclick="deleteMedicine('${med.id}')">削除</button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+
+        updateStats();
+        localStorage.setItem('medicines', JSON.stringify(medicines));
+    }
+
+    // 保存・更新処理
+    function saveMedicine(e) {
+        e.preventDefault();
+        const id = document.getElementById('medId').value;
+        const name = document.getElementById('medName').value.trim();
+        const category = document.getElementById('medCategory').value;
+        const expiry = document.getElementById('medExpiry').value;
+        const memo = document.getElementById('medMemo').value.trim();
+
+        if (!name || !expiry) return;
+
+        if (id) {
+            // 更新
+            medicines = medicines.map(med => med.id === id ? { id, name, category, expiry, memo } : med);
+        } else {
+            // 新規
+            const newMed = {
+                id: Date.now().toString(),
+                name,
+                category,
+                expiry,
+                memo
+            };
+            medicines.push(newMed);
+        }
+
+        resetForm();
+        renderMedicines();
+    }
+
+    // 編集モード移行
+    function editMedicine(id) {
+        const med = medicines.find(m => m.id === id);
+        if (!med) return;
+
+        document.getElementById('medId').value = med.id;
+        document.getElementById('medName').value = med.name;
+        document.getElementById('medCategory').value = med.category;
+        document.getElementById('medExpiry').value = med.expiry;
+        document.getElementById('medMemo').value = med.memo;
+
+        document.getElementById('formTitle').innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            お薬情報の編集
+        `;
+        document.getElementById('submitBtn').innerText = '更新する';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // フォームリセット
+    function resetForm() {
+        document.getElementById('medForm').reset();
+        document.getElementById('medId').value = '';
+        document.getElementById('formTitle').innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            新しい薬を追加
+        `;
+        document.getElementById('submitBtn').innerText = '登録する';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
+
+    // 削除処理
+    function deleteMedicine(id) {
+        if (confirm('このお薬情報を削除してもよろしいですか？')) {
+            medicines = medicines.filter(m => m.id !== id);
+            renderMedicines();
+        }
+    }
+
+    // チェッカー用チェックボックス描画
+    function renderCheckerCheckboxes() {
+        const container = document.getElementById('checkerCheckboxes');
+        container.innerHTML = '';
+
+        if (medicines.length === 0) {
+            container.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-light); text-align: center;">登録されているお薬がありません。まずお薬を登録してください。</div>';
+            return;
+        }
+
+        medicines.forEach(med => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-label';
+            label.innerHTML = `
+                <input type="checkbox" name="checkMed" value="${med.id}">
+                <span>${escapeHTML(med.name)} <small style="color:var(--text-light);">(${escapeHTML(med.category)})</small></span>
+            `;
+            container.appendChild(label);
+        });
+    }
+
+    // 簡易飲み合わせ判定ロジック
+    function runCheck() {
+        const checkboxes = document.querySelectorAll('input[name="checkMed"]:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+        const resultContainer = document.getElementById('checkResultContainer');
+
+        if (selectedIds.length < 2) {
+            resultContainer.innerHTML = '<div class="alert-box alert-warning">比較・チェックするには<strong>2つ以上</strong>のお薬を選択してください。</div>';
+            return;
+        }
+
+        const selectedMeds = medicines.filter(m => selectedIds.includes(m.id));
+        
+        let warnings = [];
+        let infoNotes = [];
+
+        // ロジック例: 複数の解熱鎮痛薬が含まれていないか
+        const nsaidKeywords = ['ロキソニン', 'イブ', 'バファリン', 'アセトアミノフェン', 'PL', '総合感冒', '解熱'];
+        let nsaidCount = 0;
+
+        selectedMeds.forEach(med => {
+            const fullName = (med.name + med.memo).toLowerCase();
+            if (nsaidKeywords.some(kw => fullName.includes(kw.toLowerCase()))) {
+                nsaidCount++;
+            }
+        });
+
+        if (nsaidCount >= 2) {
+            warnings.push({
+                title: '解熱鎮痛薬・総合感冒薬の重複の可能性',
+                desc: '選択された薬の中に、熱を下げる成分や痛み止め成分（NSAIDsなど）が含まれる薬が複数ある可能性があります。成分の重複による副作用リスクが高まる恐れがあるため注意してください。'
+            });
+        }
+
+        // 結果構築
+        let html = '<h3 style="font-size: 1rem; margin-bottom: 12px;">チェック結果</h3>';
+
+        if (warnings.length > 0) {
+            warnings.forEach(w => {
+                html += `
+                    <div class="alert-box alert-danger">
+                        <strong>⚠️ ${w.title}</strong>
+                        <p style="font-size: 0.9rem; margin-top: 4px;">${w.desc}</p>
+                    </div>
+                `;
+            });
+        } else {
+            html += `
+                <div class="alert-box alert-success">
+                    <strong>✅ 重大な重複警告は検出されませんでした</strong>
+                    <p style="font-size: 0.9rem; margin-top: 4px;">ただし、これは簡易チェッカーです。確実な安全性については必ず医師や薬剤師にご相談ください。</p>
+                </div>
+            `;
+        }
+
+        html += '<div style="font-size: 0.85rem; color: var(--text-light); margin-top: 10px;">※本ツールは一般的な目安を提供するものであり、医療上のアドバイスの代わりにはなりません。</div>';
+        
+        resultContainer.innerHTML = html;
+    }
+
+    // 簡易HTMLエスケープ
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, 
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+        );
+    }
+
+    // 初期化実行
+    renderMedicines();
+</script>
+
+</body>
+</html>
